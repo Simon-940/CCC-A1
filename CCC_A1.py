@@ -8,11 +8,11 @@ import re
 from mpi4py import MPI
 
 # load twitter data
-with open('data/twitter-data-small.json', encoding='utf-8') as f:
+with open('twitter-data-small.json', encoding='utf-8') as f:
     tweets = json.load(f)
 
 # load location file
-with open('data/sal.json', encoding='utf-8') as f:
+with open('sal.json', encoding='utf-8') as f:
     locations = json.load(f)
 
 
@@ -95,7 +95,6 @@ if rank == 0:
     twt_users = [item[1] for item in recv]
     # sum values with same key
     res_city = dict(functools.reduce(operator.add, map(collections.Counter, cap_cities)))
-    # TODO: task 2 and 3
     res_users = {}
     for node_dict in twt_users:
         for uid, data in node_dict.items():
