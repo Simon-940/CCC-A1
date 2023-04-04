@@ -2,10 +2,7 @@ import collections
 import functools
 import operator
 
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
+
 import json
 import re
 from mpi4py import MPI
@@ -17,6 +14,7 @@ with open('data/twitter-data-small.json', encoding='utf-8') as f:
 # load location file
 with open('data/sal.json', encoding='utf-8') as f:
     locations = json.load(f)
+
 
 class Tweet():
     def __init__(self, tweet) -> None:
@@ -36,7 +34,9 @@ class Tweet():
 
     def get_author(self):
         return self.author
-def extract_data(tweets ,locations,size,start_point):
+
+
+def extract_data(tweets, locations, size, start_point):
     capital_cities = {
         '1gsyd': 0,
         '2gmel': 0,
@@ -52,7 +52,7 @@ def extract_data(tweets ,locations,size,start_point):
 
     tweeters = {}
 
-    for tweet in tweets[start_point:start_point+size]:
+    for tweet in tweets[start_point:start_point + size]:
         t = Tweet(tweet)
         city = t.get_place()
         id = t.get_author()
@@ -74,35 +74,45 @@ def extract_data(tweets ,locations,size,start_point):
 
     return capital_cities, tweeters
 
+
 # set MPI variable
 comm = MPI.COMM_WORLD
 rank = comm.rank
 size = comm.size
 # calculate chuck size using node size
-chuck_size = len(tweets)//size
-start_points = list(range(0, len(tweets), len(tweets)//size))[:size]
-sendbuf = start_points
-# scatter starting point
+chuck_size = len(tweets) // size
+start_points = list(range(0, len(tweets), len(tweets) // size))[:size]
+# scatter starting index of the chunk
 start_point = comm.scatter(start_points, 0)
+# run the main function
 res = extract_data(tweets, locations, chuck_size, start_point)
+# gather result
 recv = comm.gather(res, 0)
-
+# concatenate result
 if rank == 0:
     # dict list for tasks
-    cap = [item[0] for item in recv]
-    twt = [item[1] for item in recv]
+    cap_cities = [item[0] for item in recv]
+    twt_users = [item[1] for item in recv]
     # sum values with same key
-    res_city = dict(functools.reduce(operator.add, map(collections.Counter, cap)))
+    res_city = dict(functools.reduce(operator.add, map(collections.Counter, cap_cities)))
     # TODO: task 2 and 3
-
+    res_users = {}
+    for node_dict in twt_users:
+        for uid, data in node_dict.items():
+            if uid in res_users:
+                res_users[uid][0] += data[0]
+                res_users[uid][1] = dict(functools.reduce(operator.add,
+                                                          map(collections.Counter, [res_users[uid][1], data[1]])))
+            else:
+                res_users[uid] = data
     # t1
     top_cities = sorted(res_city.items(), key=lambda item: item[1], reverse=True)
     print(top_cities, "\n")
 
-    # # t2
-    # t2top_tweeters = sorted(res_twt.items(), key=lambda item: item[1][0], reverse=True)[:10]
-    # print(t2top_tweeters, "\n")
-    #
-    # # t3
-    # t3top_tweeters = sorted(res_twt.items(), key=lambda item: len(item[1][1]), reverse=True)[:10]
-    # print(t3top_tweeters, "\n")
+    # t2
+    t2top_tweeters = sorted(res_users.items(), key=lambda item: item[1][0], reverse=True)[:10]
+    print(t2top_tweeters, "\n")
+
+    # t3
+    t3top_tweeters = sorted(res_users.items(), key=lambda item: len(item[1][1]), reverse=True)[:10]
+    print(t3top_tweeters, "\n")
