@@ -2,7 +2,6 @@ import collections
 import functools
 import operator
 
-
 import json
 import re
 from mpi4py import MPI
@@ -46,9 +45,10 @@ def extract_data(tweets, locations, size, start_point):
         '6ghob': 0,
         '7gdar': 0,
         '8acte': 0,
+        '9oter': 0
     }
 
-    irrelevant_areas = ['1rnsw', '2rvic', '3rqld', '4rsau', '5rwau', '6rtas', '7rnte', '9oter']
+    irrelevant_areas = ['1rnsw', '2rvic', '3rqld', '4rsau', '5rwau', '6rtas', '7rnte']
 
     tweeters = {}
 
@@ -105,13 +105,34 @@ if rank == 0:
             else:
                 res_users[uid] = data
     # t1
+    cities_dict = {"1gsyd": "Greater Sydney", "2gmel": "Greater Melbourne", "3gbri": "Greater Brisbane",
+                   "4gade": "Greater Adelaide", "5gper": "Greater Perth",
+                   "6ghob": "Greater Hobart", "7gdar": "Greater Darwin", "8acte": "Australian Capital Territory",
+                   "9oter": "Other Territory"}
     top_cities = sorted(res_city.items(), key=lambda item: item[1], reverse=True)
-    print(top_cities, "\n")
+
+    print("Task1:")
+    print("Greater Capital City", "\t\t", "Number of Tweets Made")
+    for item in top_cities:
+        print("{0} ({1:30}{2}".format(item[0], cities_dict[item[0]] + ")", item[1]))
 
     # t2
     t2top_tweeters = sorted(res_users.items(), key=lambda item: item[1][0], reverse=True)[:10]
-    print(t2top_tweeters, "\n")
+
+    print("\nTask2:")
+    print("Rank", "\t\t", "Author Id", "\t\t", "Number of Tweets Made")
+    for i in range(len(t2top_tweeters)):
+        print("#{0}\t\t{1:30}{2}".format(i + 1, t2top_tweeters[i][0], t2top_tweeters[i][1][0]))
 
     # t3
     t3top_tweeters = sorted(res_users.items(), key=lambda item: len(item[1][1]), reverse=True)[:10]
-    print(t3top_tweeters, "\n")
+
+    print("\nTask3:")
+    print("Rank", "\t\t", "Author Id", "\t\t\t\t", "Number of Unique City Locations and #Tweets")
+    for i in range(len(t3top_tweeters)):
+        tmp = []
+        for key, value in t3top_tweeters[i][1][1].items():
+            tmp.append(str(value) + key[1:])
+        location_string = ", ".join(tmp)
+        print("#{0}\t\t{1:30} {2} (#{3} tweets - {4}".format(i + 1, t3top_tweeters[i][0], len(t3top_tweeters[i][1][1])
+                                                            , t3top_tweeters[i][1][0], location_string + ")"))
